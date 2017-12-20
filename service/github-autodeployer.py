@@ -72,7 +72,7 @@ def clean_git_repo():
 ## zip a directory
 def zip_payload():
     remove_if_exists(zipped_payload)
-    with zipfile.ZipFile(zipped_payload, 'w') as zippit:
+    with zipfile.ZipFile(zipped_payload, 'w', zipfile.ZIP_DEFLATED) as zippit:
         os.chdir(payload_dir)
         for file in glob.glob('**', recursive=True):
             if os.path.isfile(file):
