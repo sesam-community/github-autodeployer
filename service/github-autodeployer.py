@@ -57,24 +57,29 @@ def clone_git_repov2():
 
 ## remove .git, .gitignore and README from a cloned github repo directory
 def clean_git_repo():
-    os.chdir(git_cloned_dir)
-    for path in glob.glob('.git'):
+    #os.chdir(git_cloned_dir)
+    for path in glob.glob(git_cloned_dir + "/" + '.git'):
         shutil.rmtree(path)
-    for path in glob.glob('.gitignore'):
+    for path in glob.glob(git_cloned_dir + "/" + '.gitignore'):
         os.remove(path)
-    for path in glob.glob('README.md'):
+    for path in glob.glob(git_cloned_dir + "/" + 'README.md'):
         os.remove(path)
 
 
 ## zip a directory
 def zip_payload():
+    logging.info("removing " + zipped_payload)
     remove_if_exists(zipped_payload)
+    logging.info("removed")
+    logging.info("payload dir: " + payload_dir)
     with zipfile.ZipFile(zipped_payload, 'w', zipfile.ZIP_DEFLATED) as zippit:
         os.chdir(payload_dir)
         for file in glob.glob('**', recursive=True):
-            if os.path.isfile(file):
+            if os.path.isfile(file) and file != "sesam.zip":
+                logging.info(file)
                 zippit.write(file)
 
+    logging.info('done')
 ## create a directory
 def create_dir(path):
     if not os.path.exists(path):
@@ -103,7 +108,7 @@ def extract_sesam_files_from(dir):
 def prepare_payload():
     remove_if_exists(payload_dir)
     create_dir(payload_dir)
-    extract_sesam_files_from(sync_root)
+    extract_sesam_files_from(git_cloned_dir + "/" + sync_root)
 
 
 ## download the sesam configuration
@@ -186,6 +191,7 @@ def compare_directories(dir1, dir2):
 
 
 if __name__ == '__main__':
+    os.chdir("/service")
     with open("id_deployment_key", "w") as key_file:
         key_file.write(os.environ['DEPLOY_TOKEN'])
     os.chmod("id_deployment_key", 0o600)
