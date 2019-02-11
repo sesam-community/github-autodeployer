@@ -68,18 +68,18 @@ def clean_git_repo():
 
 ## zip a directory
 def zip_payload():
-    logging.info("removing " + zipped_payload)
+    logging.info("removing old config " + zipped_payload)
     remove_if_exists(zipped_payload)
-    logging.info("removed")
-    logging.info("payload dir: " + payload_dir)
+    logging.debug("removed")
+    logging.debug("payload dir: " + payload_dir)
+    logging.info('Zipping new config')
     with zipfile.ZipFile(zipped_payload, 'w', zipfile.ZIP_DEFLATED) as zippit:
         os.chdir(payload_dir)
         for file in glob.glob('**', recursive=True):
             if os.path.isfile(file) and file != "sesam.zip":
-                logging.info(file)
+                logging.debug(file)
                 zippit.write(file)
 
-    logging.info('done')
 ## create a directory
 def create_dir(path):
     if not os.path.exists(path):
@@ -128,7 +128,7 @@ def download_sesam_zip():
 
 ## upload the sesam configuration straight from the cloned git repo
 def upload_payload():
-    logging.info('hvor er jeg?' + os.getcwd())
+    logging.debug('hvor er jeg?' + os.getcwd())
     request = requests.put(url=sesam_api + "/config?force=true",
                            data=open(zipped_payload, 'rb').read(),
                            headers={'Content-Type': 'application/zip', 'Authorization': 'bearer ' + jwt})
