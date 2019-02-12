@@ -13,9 +13,7 @@ Warning, use with care. Notes:
 * The microservice always assumes that the GitHub configuration is authoritative. No matter what.
 * The files are compared using the filecmp python3 library. Example [here.](https://stackoverflow.com/a/6681395)
 * The microservice always automatically _overwrites_ the local Sesam node configuration.
-* The microservice itself has to be part of the GitHub configuration, listed under the systems directory, with an id field matching the Sesam
-file naming convention. That is, for an id of "watcher", you should have a "watcher.conf.json" in the systems directory. If the microservice is not present on GitHub, the microservice will
-overwrite the Sesam node configuration with a new one, not containing the microservice itself, and die :-)
+* The microservice does not have to be a part of the GitHub configuration because it add itself to the configuration during its run. 
 
 ## Environment variables
 
@@ -23,11 +21,11 @@ overwrite the Sesam node configuration with a new one, not containing the micros
 
 `JWT` - JSON Web Token granting access to the instance. This should be added as a secret to the datahub / variables section in your Settings.
 
-`GITHUB_TOKEN` - The GitHub token of the user used to clone the repository. It has to be allowed to clone the repo. This has to be created on GitHub, under your user Settings > Developer Settings > Personal Access Tokens.
+`DEPLOY_TOKEN` - The deploy key. It has to be allowed to clone the repo. This has to be created on GitHub, under your repo Settings > Deploy Keys.
 
-`GITHUB_USER` - The GitHub user or organization owning the repository (not necessarily the user used to clone it, might be the organization name at the customer).
+`GITHUB_REPO` - The name of the repository containing the configuration to sync.
 
-`GITHUB_PROJECT` - The name of the repository containing the configuration to sync.
+`AUTODEPLOYER_PATH` - The path where the system should add itself, so within systems-folder. Example: systems/github-autodeployer.conf.json
 
 `BRANCH` - The branch of the repo to use. If not specified, defaults to "master".
 
@@ -43,9 +41,9 @@ with access permission to the private GitHub repository you are using. Some vari
   "type": "system:microservice",
   "docker": {
     "environment": {
-      "GITHUB_PROJECT": "acme-sesam-config",
-      "GITHUB_TOKEN": "$SECRET(github_token)",
-      "GITHUB_USER": "acme",
+      "GITHUB_REPO": "$ENV(git_repo)",
+      "DEPLOY_TOKEN": "$SECRET(deploy-token)",
+      "AUTODEPLOYER_PATH": "systems/github-autodeployer.conf.json",
       "JWT": "$SECRET(jwt)",
     },
     "image": "enemico/watcher:latest",
@@ -64,9 +62,8 @@ Same as above, just showing all the available variables.
   "docker": {
     "environment": {
       "BRANCH": "master",
-      "GITHUB_PROJECT": "acme-sesam-config",
-      "GITHUB_TOKEN": "$SECRET(github_token)",
-      "GITHUB_USER": "acme",
+      "AUTODEPLOYER_PATH": "systems/github-autodeployer.conf.json"
+      "GITHUB_REPO": "$ENV(git_repo)",
       "JWT": "$SECRET(jwt)",
       "SESAM_API_URL": "https://b893jus.sesam.cloud/api",
       "SYNC_ROOT": "sesam-home/sesam-node"
@@ -80,14 +77,13 @@ Same as above, just showing all the available variables.
 
 ## Example tutorial
 
-1. Make sure you have all you need. A GitHub token for a user allowed to clone the private repo. A jwt string for your Sesam node.
+1. Make sure you have all you need. A Deploy key for a repository allowed to clone the repo. A jwt string for your Sesam node.
 2. Add the secrets to the Sesam node under settings > datahub > secrets. Check that the names match with your configuration.
 3. Make sure you have your GitHub repo in place, and you have your configuration stored under the SYNC_ROOT defined directory. Pipes, systems and
 node-metdata.conf.json will be sync'ed.
-4. Make sure that your GitHub SYNC_ROOT subdirectory contains the microservice json, named <_id>.conf.json
-5. On your node, add a new system, cut and paste the microservice json into the text field. Make sure the two json are identical. Press "save".
+4. On your node, add a new system, cut and paste the microservice json into the text field. Make sure the two json are identical. Press "save".
 Press "Refresh" and wait for the logs to appear.
-6. Every minute the microservice will inform you of the changes from GitHub applied (if any) and the result.
+5. Every minute the microservice will inform you of the changes from GitHub applied (if any) and the result.
 
 ## TODO
 
