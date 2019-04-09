@@ -46,7 +46,7 @@ with access permission to the private GitHub repository you are using. Some vari
       "AUTODEPLOYER_PATH": "systems/github-autodeployer.conf.json",
       "JWT": "$SECRET(jwt)",
     },
-    "image": "enemico/watcher:latest",
+    "image": "sesamcommunity/github-autodeployer:latest",
     "port": 5000
   }
 }
@@ -68,7 +68,7 @@ Same as above, just showing all the available variables.
       "SESAM_API_URL": "https://b893jus.sesam.cloud/api",
       "SYNC_ROOT": "sesam-home/sesam-node"
     },
-    "image": "enemico/watcher:latest",
+    "image": "sesamcommunity/github-autodeployer:latest",
     "port": 5000
   }
 }
