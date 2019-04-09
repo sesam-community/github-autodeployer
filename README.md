@@ -41,7 +41,7 @@ with access permission to the private GitHub repository you are using. Some vari
   "type": "system:microservice",
   "docker": {
     "environment": {
-      "GITHUB_REPO": "$ENV(git_repo)",
+      "GIT_REPO": "$ENV(git_repo)",
       "DEPLOY_TOKEN": "$SECRET(deploy-token)",
       "AUTODEPLOYER_PATH": "systems/github-autodeployer.conf.json",
       "JWT": "$SECRET(jwt)",
@@ -63,7 +63,7 @@ Same as above, just showing all the available variables.
     "environment": {
       "BRANCH": "master",
       "AUTODEPLOYER_PATH": "systems/github-autodeployer.conf.json"
-      "GITHUB_REPO": "$ENV(git_repo)",
+      "GIT_REPO": "$ENV(git_repo)",
       "JWT": "$SECRET(jwt)",
       "SESAM_API_URL": "https://b893jus.sesam.cloud/api",
       "SYNC_ROOT": "sesam-home/sesam-node"
