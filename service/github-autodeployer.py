@@ -22,7 +22,7 @@ branch = os.environ.get('BRANCH', 'master') # the branch of the project you want
 sync_root = os.environ.get('SYNC_ROOT', '/') # the top directory from the github repo you want to use for sync
 deploy_token =  os.environ.get('DEPLOY_TOKEN') # ssh deploy key for this particular project
 autodeployer_config_path = os.environ.get('AUTODEPLOYER_PATH') # path to system config in current node config
-env_vars_filename = os.getenv('ENV_VARS_FILENAME', False) # name of github environment variables file if you want to sync
+env_vars_filename = os.getenv('ENV_VARS_FILENAME', False) # Name of git environment variables file if you want to sync
 
 ## internal, skeleton, don't touch, you perv! *touchy, touchy*
 
@@ -38,7 +38,7 @@ log_level = logging.getLevelName(os.environ.get('LOG_LEVEL', 'INFO'))  # default
 logging.basicConfig(level=log_level)  # dump log to stdout
 
 logging.info(datetime.datetime.now())
-logging.debug("Github repo: %s" % git_repo)
+logging.debug("Git repo: %s" % git_repo)
 logging.debug("Branch: %s" % branch)
 logging.debug("Sync root: %s" % sync_root)
 logging.debug("Target sesam instance: %s" % sesam_api)
@@ -48,7 +48,6 @@ logging.debug("Target sesam instance: %s" % sesam_api)
 def remove_if_exists(path):
     if os.path.exists(path):
         for root, dirs, files in os.walk(path):
-            # os.remove(path)
             shutil.rmtree(path)
 
 ## clone a github repo version2: using python libraries
@@ -97,8 +96,9 @@ def extract_sesam_files_from(dir):
         if os.path.isfile(path):
             if fnmatch.fnmatch(name, 'node-metadata.conf.json'):
                 shutil.copyfile(path, payload_dir + "/" + name)
-            if fnmatch.fnmatch(name, "test-env.json"):
-                shutil.copyfile(path, env_var_git_dir + "/" + name)
+            if env_vars_filename:
+                if fnmatch.fnmatch(name, env_vars_filename):
+                    shutil.copyfile(path, env_var_git_dir + "/" + name)
         else:
             extract_sesam_files_from(path)
             if os.path.isdir(path):
@@ -138,7 +138,7 @@ def download_sesam_env_variables():
                            headers={'Accept': 'application/json', 'Authorization': 'bearer ' + jwt})
     if response.status_code == 200:
         logging.info("OK, the Sesam api answered with status code: %s" % response.status_code)
-        f = open(env_var_sesam_dir + "/" + "test-env.json", "w+")
+        f = open(env_var_sesam_dir + "/" + env_vars_filename, "w+")
         f.write(json.dumps(response.json(), sort_keys=True, indent=2, separators=(',', ': ')) + "\n")
         f.close()
     else:
@@ -152,7 +152,6 @@ def post_env_variables_list():
                 env_variables = get_env_variables_fromfile(env_var_git_dir + "/" + env_vars_filename)
                 resp = requests.put(url=sesam_api + "/env", json=env_variables,
                            headers={'Accept': 'application/json', 'Authorization': 'bearer ' + jwt})
-                logging.error("posting data to node.{}".format(env_variables))
             except Exception:
                 logging.exception("Failed to post environment variables")
             if resp.status_code != 200:
@@ -162,9 +161,9 @@ def post_env_variables_list():
 def log_to_node_screen():
     all_node_vars = get_env_variables_fromfile(env_var_sesam_dir + "/" + env_vars_filename)
     if len(all_node_vars) > 0:
-        logging.error("Following node environment variables has been replaced with your git env-configuration!\n"
-                     "you can update git env-configuratiaon if you want it back : {}"
-                     .format(all_node_vars))
+        logging.info("The following node environment variables has been replaced with your git env-configuration!")
+        logging.info(all_node_vars)
+        logging.info("You can put above values back in your git env-configuration if you want it back")
 
 
 def get_env_variables_fromfile(env_file):
@@ -233,8 +232,6 @@ def compare_env_directories(dir1, dir2):
         dir1, dir2, dirs_cmp.common_files, shallow=False)
     if len(mismatch) > 0 or len(errors) > 0:
         logging.info("Environment variables not in sync with git env-config: %s" % dirs_cmp.diff_files)
-        logging.info("mismatch: %s" % mismatch)
-        logging.info("mismatch: %s" % errors)
         return False
     for common_dir in dirs_cmp.common_dirs:
         new_dir1 = os.path.join(dir1, common_dir)
