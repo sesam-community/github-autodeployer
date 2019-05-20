@@ -1,6 +1,8 @@
 FROM python:3-alpine
 
+
 LABEL author="Enrico Razzetti enrico.razzetti@bouvet.no"
+
 
 RUN apk update
 RUN apk add git
