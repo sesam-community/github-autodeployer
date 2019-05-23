@@ -31,6 +31,8 @@ Warning, use with care. Notes:
 
 `SYNC_ROOT` - Defaults to the top directory, or "/". The path of the top directory in your GitHub repo to use for sync. Might be a subdirectory of the repo, for example if you have multiple configurations in different directories of the same repository.
 
+`ENV_VARS_FILENAME`-  it should be name of your  environment variables file (like "test-env.json" or any name that you like) on your git-repo and in Sesam system config.Name must be same on both places.By default, it will not perform any synchronization if this variable is not persent in sesam system config or file-names are not same on both places.
+
 ## Example Sesam System Config
 This configuration assumes that you have defined both a "github_token" and a "jwt" secret under settings > datahub > secrets, containing the relative correct strings. Make sure also that the GitHub token you are using belongs to a user
 with access permission to the private GitHub repository you are using. Some variables have been omitted, and using defaults: we assume we are using the master branch, and "pipes", "systems" and node-metadata.conf.json are in the top directory of that repository.
@@ -66,7 +68,8 @@ Same as above, just showing all the available variables.
       "GIT_REPO": "$ENV(git_repo)",
       "JWT": "$SECRET(jwt)",
       "SESAM_API_URL": "https://b893jus.sesam.cloud/api",
-      "SYNC_ROOT": "sesam-home/sesam-node"
+      "SYNC_ROOT": "sesam-home/sesam-node",
+      "ENV_VARS_FILENAME": "test-env.json"
     },
     "image": "sesamcommunity/github-autodeployer:latest",
     "port": 5000
