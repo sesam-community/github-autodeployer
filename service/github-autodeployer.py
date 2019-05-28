@@ -98,10 +98,6 @@ def extract_sesam_files_from(dirpath):
         if os.path.isfile(path):
             if fnmatch.fnmatch(name, 'node-metadata.conf.json'):
                 shutil.copyfile(path, payload_dir + "/" + name)
-            if env_vars_filename:
-                if fnmatch.fnmatch(name, env_vars_filename):
-                    shutil.copyfile(path, env_var_git_dir + "/" + name)
-                    format_jsonfile(env_var_git_dir + "/" + name)
         else:
             extract_sesam_files_from(path)
             if os.path.isdir(path):
@@ -109,6 +105,12 @@ def extract_sesam_files_from(dirpath):
                     shutil.copytree(path, payload_dir + "/" + name)
                 elif fnmatch.fnmatch(name, 'systems'):
                     shutil.copytree(path, payload_dir + "/" + name)
+                elif fnmatch.fnmatch(name, 'env-vars'):
+                    if env_vars_filename:
+                        for envfilename in os.listdir(path):
+                            if fnmatch.fnmatch(envfilename, env_vars_filename):
+                                shutil.copyfile(path + "/" + envfilename, env_var_git_dir + "/" + envfilename)
+                                format_jsonfile(env_var_git_dir + "/" + env_vars_filename)
 
 
 # Need sort and format git file as per sesam node key-value pair
@@ -256,7 +258,7 @@ def compare_env_directories(dir1, dir2):
     (_, mismatch, errors) = filecmp.cmpfiles(
         dir1, dir2, dirs_cmp.common_files, shallow=False)
     if len(mismatch) > 0 or len(errors) > 0:
-        logging.info("Environment variables not in sync with git env-config: %s" % dirs_cmp.diff_files)
+        logging.info("Environment variables are not in sync with git env-config: %s" % dirs_cmp.diff_files)
         return False
     for common_dir in dirs_cmp.common_dirs:
         new_dir1 = os.path.join(dir1, common_dir)
