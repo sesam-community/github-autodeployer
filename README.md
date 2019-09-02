@@ -23,7 +23,7 @@ Warning, use with care. Notes:
 
 `DEPLOY_TOKEN` - The private deploy key. It has to be allowed to clone the repo. This has to be created by you (follow the guide on GitHub https://developer.github.com/v3/guides/managing-deploy-keys/), under your repo Settings > Deploy Keys. The  public part of this key get pasted to git and the private one should be added to secrets in your sesam node.
 
-`GIT_REPO` - The name of the repository containing the configuration to sync.
+`GIT_REPO` - The SSH url to the repository containing the configuration to sync. Example: git@github.com:some-community/your-repo.git
 
 `AUTODEPLOYER_PATH` - The path where the system should add itself, so within systems-folder. Example: systems/github-autodeployer.conf.json
 
@@ -44,7 +44,7 @@ with access permission to the private GitHub repository you are using. Some vari
       "GIT_REPO": "$ENV(git_repo)",
       "DEPLOY_TOKEN": "$SECRET(deploy-token)",
       "AUTODEPLOYER_PATH": "systems/github-autodeployer.conf.json",
-      "JWT": "$SECRET(jwt)",
+      "JWT": "$SECRET(jwt)"
     },
     "image": "sesamcommunity/github-autodeployer:latest",
     "port": 5000
