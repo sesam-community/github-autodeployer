@@ -25,7 +25,7 @@ Warning, use with care. Notes:
 
 `GIT_REPO` - The SSH url to the repository containing the configuration to sync. Example: git@github.com:some-community/your-repo.git
 
-`AUTODEPLOYER_PATH` - The path where the system should add itself, so within systems-folder. Example: systems/github-autodeployer.conf.json
+`AUTODEPLOYER_PATH` - The path where the system should add itself, so within systems-folder. The file name needs to be the same as the id of the system. Example: systems/github-autodeployer.conf.json
 
 `BRANCH` - The branch of the repo to use. If not specified, defaults to "master".
 
@@ -37,7 +37,7 @@ with access permission to the private GitHub repository you are using. Some vari
 
 ```
 {
-  "_id": "watcher",
+  "_id": "github-autodeployer",
   "type": "system:microservice",
   "docker": {
     "environment": {
