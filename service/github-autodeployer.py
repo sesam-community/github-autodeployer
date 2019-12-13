@@ -116,7 +116,7 @@ def download_sesam_zip():
     remove_if_exists(sesam_checkout_dir)
     create_dir(sesam_checkout_dir)
     request = requests.get(url=sesam_api + "/config",
-                           headers={'Accept': 'application/zip', 'Authorization': 'bearer ' + jwt})
+                           headers={'Accept': 'application/zip', 'Authorization': 'bearer ' + jwt}, verify=False)
     if request.status_code == 200:
         logging.info("OK, the Sesam api answered with status code: %s" % request.status_code)
         with open(sesam_checkout_dir + "/" + "sesam.zip", 'wb') as f:
@@ -131,7 +131,7 @@ def upload_payload():
     logging.debug('hvor er jeg?' + os.getcwd())
     request = requests.put(url=sesam_api + "/config?force=true",
                            data=open(zipped_payload, 'rb').read(),
-                           headers={'Content-Type': 'application/zip', 'Authorization': 'bearer ' + jwt})
+                           headers={'Content-Type': 'application/zip', 'Authorization': 'bearer ' + jwt},verify=False)
     if request.status_code == 200:
         logging.info("OK. The Sesam api answered with status code: %s" % request.status_code)
     else:
