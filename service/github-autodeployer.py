@@ -18,11 +18,15 @@ sesam_api = os.environ.get('SESAM_API_URL', 'http://sesam-node:9042/api') # ex: 
 jwt = os.environ.get('JWT')
 git_repo = os.environ.get('GIT_REPO') # the project you want to sync from
 branch = os.environ.get('BRANCH', 'master') # the branch of the project you want to use for a sync
+tag = os.environ.get('TAG')
 sync_root = os.environ.get('SYNC_ROOT', '/') # the top directory from the github repo you want to use for sync
 deploy_token =  os.environ.get('DEPLOY_TOKEN') # ssh deploy key for this particular project
 autodeployer_config_path = os.environ.get('AUTODEPLOYER_PATH') # path to system config in current node config
 
+
+
 ## internal, skeleton, don't touch, you perv! *touchy, touchy*
+
 
 git_cloned_dir = "/tmp/git_upstream_clone"
 sesam_checkout_dir = "/tmp/sesam_conf"
@@ -30,15 +34,19 @@ zipped_payload = "/tmp/payload/sesam.zip"
 payload_dir = "/tmp/payload"
 
 # set logging
-log_level = logging.getLevelName(os.environ.get('LOG_LEVEL', 'INFO'))  # default log level = INFO
+log_level = logging.getLevelName(os.environ.get('LOG_LEVEL', 'DEBUG'))  # default log level = INFO
 logging.basicConfig(level=log_level)  # dump log to stdout
 
 logging.info(datetime.datetime.now())
 logging.debug("Github repo: %s" % git_repo)
 logging.debug("Branch: %s" % branch)
+logging.debug("Tag: %s" % tag)
 logging.debug("Sync root: %s" % sync_root)
 logging.debug("Target sesam instance: %s" % sesam_api)
 
+if tag:
+    logging.debug("Since the environmental variable 'TAG' is set, the variable 'BRANCH' is ignored")
+        
 
 ## remove a directory if it exists
 def remove_if_exists(path):
@@ -52,8 +60,10 @@ def clone_git_repov2():
     ssh_cmd = 'ssh -o "StrictHostKeyChecking=no" -i id_deployment_key'
     remove_if_exists(git_cloned_dir)
     logging.info('cloning %s', git_repo)
-    Repo.clone_from(git_repo, git_cloned_dir, env=dict(GIT_SSH_COMMAND=ssh_cmd),branch=branch)
-
+    if tag:
+        Repo.clone_from(git_repo, git_cloned_dir, env=dict(GIT_SSH_COMMAND=ssh_cmd),branch=tag)
+    else:
+        Repo.clone_from(git_repo, git_cloned_dir, env=dict(GIT_SSH_COMMAND=ssh_cmd),branch=branch)
 
 ## remove .git, .gitignore and README from a cloned github repo directory
 def clean_git_repo():
