@@ -34,13 +34,16 @@ zipped_payload = "/tmp/payload/sesam.zip"
 payload_dir = "/tmp/payload"
 
 # set logging
-log_level = logging.getLevelName(os.environ.get('LOG_LEVEL', 'DEBUG'))  # default log level = INFO
+log_level = logging.getLevelName(os.environ.get('LOG_LEVEL', 'INFO'))  # default log level = INFO
 logging.basicConfig(level=log_level)  # dump log to stdout
 
 logging.info(datetime.datetime.now())
 logging.debug("Github repo: %s" % git_repo)
-logging.debug("Branch: %s" % branch)
-logging.debug("Tag: %s" % tag)
+
+if tag:
+    logging.debug("Tag: %s" % tag)
+else:
+    logging.debug("Branch: %s" % branch)
 logging.debug("Sync root: %s" % sync_root)
 logging.debug("Target sesam instance: %s" % sesam_api)
 
