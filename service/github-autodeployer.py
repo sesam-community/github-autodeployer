@@ -21,7 +21,8 @@ branch = os.environ.get('BRANCH', 'master') # the branch of the project you want
 sync_root = os.environ.get('SYNC_ROOT', '/') # the top directory from the github repo you want to use for sync
 deploy_token =  os.environ.get('DEPLOY_TOKEN') # ssh deploy key for this particular project
 autodeployer_config_path = os.environ.get('AUTODEPLOYER_PATH') # path to system config in current node config
-
+git_username = os.environ.get('GIT_USERNAME', None)  # Needed if using clone_git_repov3
+use_git_repo_v3: bool = os.environ.get('USE_GIT_REPO_V3', 'FALSE').lower() == 'true'
 ## internal, skeleton, don't touch, you perv! *touchy, touchy*
 
 git_cloned_dir = "/tmp/git_upstream_clone"
@@ -55,6 +56,12 @@ def clone_git_repov2():
     Repo.clone_from(git_repo, git_cloned_dir, env=dict(GIT_SSH_COMMAND=ssh_cmd),branch=branch)
 
 
+def clone_git_repov3():
+    url = f'https://{git_username}:{deploy_token}@{git_repo.split("@")[-1]}'
+    repo = Repo.clone_from(url, git_cloned_dir, branch=branch)
+    return repo
+
+
 ## remove .git, .gitignore and README from a cloned github repo directory
 def clean_git_repo():
     #os.chdir(git_cloned_dir)
@@ -84,6 +91,11 @@ def zip_payload():
 def create_dir(path):
     if not os.path.exists(path):
         os.makedirs(path)
+
+
+def extract_sesam_files_with_whitelist(whitelist_path='node/deployment/whitelist-test.txt'):
+    pass
+
 
 
 ## match the sesam configuration files and copy them to the payload directory
@@ -197,7 +209,14 @@ if __name__ == '__main__':
     os.chmod("id_deployment_key", 0o600)
 
     ## we first clone the repo, clean it up, and extract the relevant files to prepare the payload.
-    clone_git_repov2()
+    if use_git_repo_v3:
+        if git_username is None:
+            logging.critical('GIT_USERNAME env-var missing! Set USE_GIT_REPO_V3 to False or add GIT_USERNAME! Exiting.')
+            exit(-1)
+        else:
+            clone_git_repov3()
+    else:
+        clone_git_repov2()
     clean_git_repo()
     prepare_payload()
     ## we then download the sesam configuration from the api, unpack it, check it ...
