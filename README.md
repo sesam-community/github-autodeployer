@@ -29,6 +29,8 @@ Warning, use with care. Notes:
 
 `BRANCH` - The branch of the repo to use. If not specified, defaults to "master".
 
+`TAG` - The tag of the repo to use. If specified, the branch variable is discarded.
+
 `SYNC_ROOT` - Defaults to the top directory, or "/". The path of the top directory in your GitHub repo to use for sync. Might be a subdirectory of the repo, for example if you have multiple configurations in different directories of the same repository.
 
 ## Example Sesam System Config
@@ -53,7 +55,7 @@ with access permission to the private GitHub repository you are using. Some vari
 ```
 
 ## Example Sesam System config specifying all available environment variables
-Same as above, just showing all the available variables.
+Same as above, just showing all the available variables, with and without the tag.
 
 ```
 {
@@ -62,6 +64,25 @@ Same as above, just showing all the available variables.
   "docker": {
     "environment": {
       "BRANCH": "master",
+      "AUTODEPLOYER_PATH": "systems/github-autodeployer.conf.json"
+      "GIT_REPO": "$ENV(git_repo)",
+      "JWT": "$SECRET(jwt)",
+      "SESAM_API_URL": "https://b893jus.sesam.cloud/api",
+      "SYNC_ROOT": "sesam-home/sesam-node"
+    },
+    "image": "sesamcommunity/github-autodeployer:latest",
+    "port": 5000
+  }
+}
+```
+
+```
+{
+  "_id": "watcher",
+  "type": "system:microservice",
+  "docker": {
+    "environment": {
+      "TAG": "1.0.5",
       "AUTODEPLOYER_PATH": "systems/github-autodeployer.conf.json"
       "GIT_REPO": "$ENV(git_repo)",
       "JWT": "$SECRET(jwt)",
