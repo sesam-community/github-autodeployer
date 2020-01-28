@@ -46,6 +46,9 @@ logging.debug("Branch: %s" % branch)
 logging.debug("Sync root: %s" % sync_root)
 logging.debug("Target sesam instance: %s" % sesam_api)
 
+if git_username is None:
+    logging.critical('GIT_USERNAME env-var missing! Exiting.')
+    exit(-1)
 
 ## remove a directory if it exists
 def remove_if_exists(path):
@@ -240,11 +243,7 @@ def check_for_unknown():
 
 if __name__ == '__main__':
     ## we first clone the repo, clean it up, and extract the relevant files to prepare the payload.
-    if git_username is None:
-        logging.critical('GIT_USERNAME env-var missing! Set USE_GIT_REPO_V3 to False or add GIT_USERNAME! Exiting.')
-        exit(-1)
-    else:
-        clone_git_repov3()
+    clone_git_repov3()
     clean_git_repo()
     prepare_payload()
     ## we then download the sesam configuration from the api, unpack it, check it ...
