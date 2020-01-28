@@ -97,3 +97,40 @@ simplicity and robustness. This is not a crucial feature to implement, since no 
 repository anyway. How often the repo is checked for change is not so critical, as long as we choose wisely the branch we use to control the microservice.
 Further on, how desirable is the scenario for which an operator can automate a deployment of a change to a Sesam node in production, without her being available
 in the case of needing to rollback? Enough with excuses, this could be implemented.
+
+## Example Sesam System config using version 2.0.0
+```
+{
+  "_id": "extra-node-watcher",
+  "type": "system:microservice",
+  "metadata": {
+    "node": "eidsiva"
+  },
+  "docker": {
+    "environment": {
+      "AUTODEPLOYER_PATH": "systems/watcher.conf.json",
+      "BRANCH": "master",
+      "DEPLOY_TOKEN": "$SECRET(GIT_TOKEN)",
+      "GIT_REPO": "$ENV(GIT_REPO)", 
+      "GIT_USERNAME": "<your-username>",
+      "JWT": "$SECRET(JWT)",
+      "LOG_LEVEL": "DEBUG",
+      "SYNC_ROOT": "/",
+      "VARIABLES_FILE_PATH": "variables/variables-test.json",
+      "VAULT_GIT_TOKEN": "$SECRET(GIT_TOKEN)",
+      "VAULT_MOUNTING_POINT": "$ENV(VAULT_MOUNTING_POINT)",
+      "VAULT_URL": "$ENV(VAULT_URL)"
+    },
+    "image": "sesamcommunity/github-autodeployer:2.0.0",
+    "port": 5000
+  }
+}
+```
+### Notes on version 2.0.0:
+* URL changed from SSH to HTTP to simplify python cloning
+* Variables in the config are verified to exist in the variables file. Will complain if not.
+* Secrets used in the config are verified to exist in Key Vault
+    * Key vault must be version 2 (kv2)
+    * Key vault must support login with git token
+        * Git token used for kv2 must have permissions: read:org & write:org
+* Comparison now happens by loading the JSON inside of the files instead of straight directory comparison.
