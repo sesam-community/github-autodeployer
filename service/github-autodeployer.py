@@ -35,7 +35,6 @@ git_username = os.environ.get('GIT_USERNAME', None)  # Needed if using clone_git
 turn_off = os.environ.get('off', 'false').lower() == 'true'
 
 ## internal, skeleton, don't touch, you perv! *touchy, touchy*
-
 git_cloned_dir = "/tmp/git_upstream_clone"
 sesam_checkout_dir = "/tmp/sesam_conf"
 zipped_payload = "/tmp/payload/sesam.zip"
@@ -86,8 +85,12 @@ def clone_git_repov2():
     ssh_cmd = 'ssh -o "StrictHostKeyChecking=no" -i id_deployment_key'
     remove_if_exists(git_cloned_dir)
     logging.info('cloning %s', git_repo)
+
+    branch_or_tag = branch
+    if tag:
+        branch_or_tag = tag
     if clone_with_git_token is False:
-        Repo.clone_from(git_repo, git_cloned_dir, env=dict(GIT_SSH_COMMAND=ssh_cmd),branch=branch)
+        Repo.clone_from(git_repo, git_cloned_dir, env=dict(GIT_SSH_COMMAND=ssh_cmd),branch=branch_or_tag)
     else: # If you are using personal access token instead of deploy token, you also need username.
         git_url = None
         if git_repo.startswith('https://'):
@@ -99,8 +102,7 @@ def clone_git_repov2():
         else:
             git_url = git_repo
         url = f'https://{git_username}:{deploy_token}@{git_url}'
-        Repo.clone_from(url, git_cloned_dir, progress=to_progress_instance(None), branch=branch)
-
+        Repo.clone_from(url, git_cloned_dir, progress=to_progress_instance(None), branch=branch_or_tag)
 
 ## remove .git, .gitignore and README from a cloned github repo directory
 def clean_git_repo():
@@ -223,7 +225,7 @@ def download_sesam_zip():
     remove_if_exists(sesam_checkout_dir)
     create_dir(sesam_checkout_dir)
     request = requests.get(url=sesam_api + "/config",
-                           headers={'Accept': 'application/zip', 'Authorization': 'bearer ' + jwt})
+                           headers={'Accept': 'application/zip', 'Authorization': 'bearer ' + jwt}, verify=False)
     if request.status_code == 200:
         logging.info("OK, the Sesam api answered with status code: %s" % request.status_code)
         with open(sesam_checkout_dir + "/" + "sesam.zip", 'wb') as f:
@@ -237,7 +239,7 @@ def download_sesam_zip():
 def upload_payload():
     request = requests.put(url=sesam_api + "/config?force=true",
                            data=open(zipped_payload, 'rb').read(),
-                           headers={'Content-Type': 'application/zip', 'Authorization': 'bearer ' + jwt})
+                           headers={'Content-Type': 'application/zip', 'Authorization': 'bearer ' + jwt},verify=False)
     if request.status_code == 200:
         logging.info("OK. The Sesam api answered with status code: %s" % request.status_code)
     else:
