@@ -29,6 +29,8 @@ Warning, use with care. Notes:
 
 `BRANCH` - The branch of the repo to use. If not specified, defaults to "master".
 
+`TAG` - The tag of the repo to use. If specified, the branch variable is discarded.
+
 `SYNC_ROOT` - Defaults to the top directory, or "/". The path of the top directory in your GitHub repo to use for sync. Might be a subdirectory of the repo, for example if you have multiple configurations in different directories of the same repository.
 
 ## Example Sesam System Config
@@ -53,7 +55,7 @@ with access permission to the private GitHub repository you are using. Some vari
 ```
 
 ## Example Sesam System config specifying all available environment variables
-Same as above, just showing all the available variables.
+Same as above, just showing all the available variables, with and without the tag.
 
 ```
 {
@@ -62,6 +64,25 @@ Same as above, just showing all the available variables.
   "docker": {
     "environment": {
       "BRANCH": "master",
+      "AUTODEPLOYER_PATH": "systems/github-autodeployer.conf.json"
+      "GIT_REPO": "$ENV(git_repo)",
+      "JWT": "$SECRET(jwt)",
+      "SESAM_API_URL": "https://b893jus.sesam.cloud/api",
+      "SYNC_ROOT": "sesam-home/sesam-node"
+    },
+    "image": "sesamcommunity/github-autodeployer:latest",
+    "port": 5000
+  }
+}
+```
+
+```
+{
+  "_id": "watcher",
+  "type": "system:microservice",
+  "docker": {
+    "environment": {
+      "TAG": "1.0.5",
       "AUTODEPLOYER_PATH": "systems/github-autodeployer.conf.json"
       "GIT_REPO": "$ENV(git_repo)",
       "JWT": "$SECRET(jwt)",
@@ -97,3 +118,42 @@ simplicity and robustness. This is not a crucial feature to implement, since no 
 repository anyway. How often the repo is checked for change is not so critical, as long as we choose wisely the branch we use to control the microservice.
 Further on, how desirable is the scenario for which an operator can automate a deployment of a change to a Sesam node in production, without her being available
 in the case of needing to rollback? Enough with excuses, this could be implemented.
+
+## Example Sesam System config using version 2.0.0
+```
+{
+  "_id": "extra-node-watcher",
+  "type": "system:microservice",
+    "docker": {
+    "environment": {
+      "AUTODEPLOYER_PATH": "systems/extra-node-watcher.conf.json",
+      "BRANCH": "master",                       <--- CAN ALSO BE A TAG
+      "DEPLOY_TOKEN": "$SECRET(GIT_TOKEN)",     <--- DEPLOY_TOKEN if GIT_USERNAME is NOT set. ACCESS_TOKEN if it is.
+      "GIT_REPO": "$ENV(EXTRA_NODE_GIT_REPO)",
+      "GIT_USERNAME": "<YOUR_GITHUB_USERNAME>", <--- IF THIS IS SET 'DEPLOY_TOKEN' MUST BE A GIT ACCESS_TOKEN!
+      "JWT": "$SECRET(EXTRA_NODE_JWT)",
+      "LOG_LEVEL": "DEBUG",
+      "SYNC_ROOT": "/",
+      "VARIABLES_FILE_PATH": "variables/variables-<ENV>.json",  OPTIONAL
+      "VAULT_GIT_TOKEN": "$SECRET(GIT_TOKEN)",                  OPTIONAL
+      "VAULT_MOUNTING_POINT": "sesam/kv2",                      OPTIONAL
+      "VAULT_URL": "https://vault.<ORGANIZATION>.io",           OPTIONAL
+      "off": "false"                                            OPTIONAL, default false.
+    },
+    "image": "sesamcommunity/github-autodeployer:2.0.0",
+    "port": 5000
+  }
+}
+```
+### Notes on version 2.0.0:
+* It is backwards compatable with previous versions as the new functionality needs the new environment variables to run.
+* If GIT_USERNAME is set, the following will happen:
+    * SSH git URL will automatically be converted to HTTP
+    * DEPLOY_TOKEN will be used as a GIT ACCESS TOKEN.
+* Variables in the config are verified to exist in the variables file. Will complain if not.
+* Secrets used in the config are verified to exist in Key Vault
+    * Key vault must be version 2 (kv2)
+    * Key vault must support login with git token
+        * Git token used for kv2 must have permissions: read:org & write:org
+* Comparison now happens by loading the JSON inside of the files instead of straight directory comparison.
+* Added 'off' option for simplicity's sake.

@@ -5,22 +5,34 @@ import requests
 import shutil
 import zipfile
 import glob
-import filecmp
 import os.path
 from git import Repo
 import fnmatch
 import logging
 import datetime
+from json import loads as load_json, dumps as dump_json
+from re import findall as regex_findall
+from Vaulter import Vaulter
 
+from git.remote import to_progress_instance
 __author__ = "Enrico Razzetti"
 
-sesam_api = os.environ.get('SESAM_API_URL', 'http://sesam-node:9042/api') # ex: "https://abcd1234.sesam.cloud/api"
+sesam_api = os.environ.get('SESAM_API_URL', 'http://sesam-node:9042/api')  # ex: "https://abcd1234.sesam.cloud/api"
 jwt = os.environ.get('JWT')
 git_repo = os.environ.get('GIT_REPO') # the project you want to sync from
 branch = os.environ.get('BRANCH', 'master') # the branch of the project you want to use for a sync
+tag = os.environ.get('TAG')
 sync_root = os.environ.get('SYNC_ROOT', '/') # the top directory from the github repo you want to use for sync
 deploy_token =  os.environ.get('DEPLOY_TOKEN') # ssh deploy key for this particular project
 autodeployer_config_path = os.environ.get('AUTODEPLOYER_PATH') # path to system config in current node config
+var_file_path: str = os.environ.get('VARIABLES_FILE_PATH')
+vault_git_token = os.environ.get('VAULT_GIT_TOKEN')
+vault_mounting_point = os.environ.get('VAULT_MOUNTING_POINT')
+vault_url = os.environ.get('VAULT_URL')
+
+git_username = os.environ.get('GIT_USERNAME', None)  # Needed if using clone_git_repov3
+
+turn_off = os.environ.get('off', 'false').lower() == 'true'
 
 ## internal, skeleton, don't touch, you perv! *touchy, touchy*
 
@@ -35,10 +47,32 @@ logging.basicConfig(level=log_level)  # dump log to stdout
 
 logging.info(datetime.datetime.now())
 logging.debug("Github repo: %s" % git_repo)
-logging.debug("Branch: %s" % branch)
+
+if turn_off is True:
+    import sys
+    sys.exit(-1)
+
+if tag:
+    logging.debug("Tag: %s" % tag)
+else:
+    logging.debug("Branch: %s" % branch)
 logging.debug("Sync root: %s" % sync_root)
 logging.debug("Target sesam instance: %s" % sesam_api)
 
+if tag:
+    logging.debug("Since the environmental variable 'TAG' is set, the variable 'BRANCH' is ignored")
+
+upload_variables = var_file_path is not None
+upload_secrets = vault_git_token is not None and vault_mounting_point is not None and vault_url is not None
+
+clone_with_git_token = False # Cloning with git token instead of deploy token if username is set.
+if git_username is not None:
+    clone_with_git_token = True
+    logging.info('Cloning with username and access token!')
+    if os.environ.get('LOG_LEVEL', 'INFO') == 'DEBUG':
+        logging.warning('DEPLOY_TOKEN (git token) will be exposed in the logs because log_level is set to DEBUG!')
+else:
+    logging.info('Cloning with deploy token!')
 
 ## remove a directory if it exists
 def remove_if_exists(path):
@@ -52,12 +86,24 @@ def clone_git_repov2():
     ssh_cmd = 'ssh -o "StrictHostKeyChecking=no" -i id_deployment_key'
     remove_if_exists(git_cloned_dir)
     logging.info('cloning %s', git_repo)
-    Repo.clone_from(git_repo, git_cloned_dir, env=dict(GIT_SSH_COMMAND=ssh_cmd),branch=branch)
+    if clone_with_git_token is False:
+        Repo.clone_from(git_repo, git_cloned_dir, env=dict(GIT_SSH_COMMAND=ssh_cmd),branch=branch)
+    else: # If you are using personal access token instead of deploy token, you also need username.
+        git_url = None
+        if git_repo.startswith('https://'):
+            git_url = git_repo.replace('https://', '')
+        elif git_repo.startswith('git@'):
+            git_url = git_repo.replace('git@', '').replace(':', '/')
+        elif git_repo.startswith('github.com:'):
+            git_url = git_repo.replace(':', '/')
+        else:
+            git_url = git_repo
+        url = f'https://{git_username}:{deploy_token}@{git_url}'
+        Repo.clone_from(url, git_cloned_dir, progress=to_progress_instance(None), branch=branch)
 
 
 ## remove .git, .gitignore and README from a cloned github repo directory
 def clean_git_repo():
-    #os.chdir(git_cloned_dir)
     for path in glob.glob(git_cloned_dir + "/" + '.git'):
         shutil.rmtree(path)
     for path in glob.glob(git_cloned_dir + "/" + '.gitignore'):
@@ -80,10 +126,68 @@ def zip_payload():
                 logging.debug(file)
                 zippit.write(file)
 
+
 ## create a directory
 def create_dir(path):
     if not os.path.exists(path):
         os.makedirs(path)
+
+
+def do_put(ses, url, json, params=None):
+    retries = 4
+    try:
+        for tries in range(retries):
+            request = ses.put(url=url, json=json, params=params)
+            if request.ok:
+                logging.info(f'Succesfully PUT request to "{url}"')
+                return 0
+            else:
+                logging.warning(
+                    f'Could not PUT request to url "{url}". Got response {request.content}. Current try {tries} of {retries}')
+        logging.error(f'Each PUT request failed to "{url}".')
+        return -1
+    except Exception as e:
+        logging.error(f'Got exception "{e}" while doing PUT request to url "{url}"')
+        return -2
+
+
+def verify_node(node):
+    node_string = dump_json(node)
+
+    variables_in_conf = regex_findall(r'\$ENV\((\S*?)\)', node_string)  # Find env vars
+    variables: dict = load_json(open(git_cloned_dir + sync_root + 'node/' + var_file_path).read())
+    for var in variables_in_conf:  # Verify they exist in git repo
+        if var not in variables:
+            logging.error(f'Missing env var {var} in variables file {var_file_path}')
+
+    secrets_in_conf = regex_findall(r'\$SECRET\((\S*?)\)', node_string)  # Find secrets
+    vault = Vaulter(vault_url, vault_git_token, vault_mounting_point)  # Create keyvault object
+    secrets: dict = vault.get_secrets(secrets_in_conf)  # Get the secrets from keyvault
+    if vault.verify() is False:  # Verify all secrets exist.
+        logging.error(f'These secrets do not exist in the vault {vault.get_missing_secrets()}')
+    return variables, secrets
+
+
+def load_sesam_files_as_json(dir):
+    node_config = []
+    for name in os.listdir(dir):
+        path = os.path.join(dir, name)
+        if os.path.isfile(path) and fnmatch.fnmatch(name, 'node-metadata.conf.json'):
+            node_config.append(load_json(open(path).read()))
+        elif os.path.isdir(path):
+            if fnmatch.fnmatch(name, 'pipes') or fnmatch.fnmatch(name, 'systems'):
+                pipes_or_systems = os.listdir(path)
+                for p_s in pipes_or_systems:
+                    local_path = os.path.join(path, p_s)
+                    node_config.append(load_json(open(local_path).read()))
+    return node_config
+
+
+def compare_json_dict_list(list1, list2):
+    sorted1 = sorted(list1, key=lambda i: i['_id'])
+
+    sorted2 = sorted(list2, key=lambda i: i['_id'])
+    return sorted1 == sorted2
 
 
 ## match the sesam configuration files and copy them to the payload directory
@@ -128,7 +232,6 @@ def download_sesam_zip():
 
 ## upload the sesam configuration straight from the cloned git repo
 def upload_payload():
-    logging.debug('hvor er jeg?' + os.getcwd())
     request = requests.put(url=sesam_api + "/config?force=true",
                            data=open(zipped_payload, 'rb').read(),
                            headers={'Content-Type': 'application/zip', 'Authorization': 'bearer ' + jwt})
@@ -141,15 +244,17 @@ def upload_payload():
 ## unzip the downloaded sesam zip archive
 def unpack_sesam_zip():
     remove_if_exists(sesam_checkout_dir + "/" + "unpacked")
-    create_dir(sesam_checkout_dir  + "/" + "unpacked")
+    create_dir(sesam_checkout_dir + "/" + "unpacked")
     zip_ref = zipfile.ZipFile(sesam_checkout_dir + "/" + "sesam.zip", 'r')
     zip_ref.extractall(sesam_checkout_dir + "/" + "unpacked")
     zip_ref.close()
+
 
 def copy_autodeployer():
     start_path = sesam_checkout_dir + "/" + "unpacked/" + autodeployer_config_path
     target_path = payload_dir + "/" + autodeployer_config_path
     shutil.copyfile(start_path, target_path)
+
 
 ## check that there is no error in the downloaded zip.
 ## we observed that if the downloaded archive from archive
@@ -169,32 +274,12 @@ def check_for_unknown():
         logging.warning("\n")
 
 
-## compare the content of two directories and the content of the files
-def compare_directories(dir1, dir2):
-    dirs_cmp = filecmp.dircmp(dir1, dir2)
-    if len(dirs_cmp.left_only) > 0 or len(dirs_cmp.right_only) > 0 or \
-            len(dirs_cmp.funny_files) > 0:
-        logging.info("These are new files from Github : %s" % dirs_cmp.right_only )
-        logging.info("These files will be gone from Sesam : %s" % dirs_cmp.left_only )
-        return False
-    (_, mismatch, errors) = filecmp.cmpfiles(
-        dir1, dir2, dirs_cmp.common_files, shallow=False)
-    if len(mismatch) > 0 or len(errors) > 0:
-        logging.info("These files changed : %s" % dirs_cmp.diff_files )
-        return False
-    for common_dir in dirs_cmp.common_dirs:
-        new_dir1 = os.path.join(dir1, common_dir)
-        new_dir2 = os.path.join(dir2, common_dir)
-        if not compare_directories(new_dir1, new_dir2):
-            return False
-    return True
-
-
 if __name__ == '__main__':
     os.chdir("/service")
-    with open("id_deployment_key", "w") as key_file:
-        key_file.write(os.environ['DEPLOY_TOKEN'])
-    os.chmod("id_deployment_key", 0o600)
+    if clone_with_git_token is False:
+        with open("id_deployment_key", "w") as key_file:
+            key_file.write(os.environ['DEPLOY_TOKEN'])
+        os.chmod("id_deployment_key", 0o600)
 
     ## we first clone the repo, clean it up, and extract the relevant files to prepare the payload.
     clone_git_repov2()
@@ -205,10 +290,24 @@ if __name__ == '__main__':
     unpack_sesam_zip()
     check_for_unknown()
     copy_autodeployer()
-    ## ... then we compare the two directories, and if there are differences, we pack the payload
-    ## and push it back to the api. This overwrites the existing configuration.
-    if not compare_directories(sesam_checkout_dir + "/" + "unpacked", payload_dir):
-        logging.info("Uploading new configuration from github to your Sesam node api.")
+
+    new_node = load_sesam_files_as_json(git_cloned_dir + "/" + sync_root + '/node')
+    old_node = load_sesam_files_as_json(sesam_checkout_dir + "/" + "unpacked")
+    if not compare_json_dict_list(old_node, new_node):
+        # Verify variables & secrets if specified
+        if upload_variables or upload_secrets:
+            variables, secrets = verify_node(new_node)
+            logging.debug(f'Uploading secrets to node!')
+            # Upload variables & secrets
+            session = requests.session()
+            session.headers = {'Authorization': f'bearer {jwt}'}
+            if upload_secrets:
+                if do_put(session, f'{sesam_api}/secrets', json=secrets) != 0:
+                    logging.error('Failed to upload secrets to node!')
+            if upload_variables:
+                if do_put(session, f'{sesam_api}/env', json=variables) != 0:
+                    logging.error('Failed to upload variables to node!')
+        logging.info(f"Uploading new configuration from github to node {sesam_api}")
         zip_payload()
         upload_payload()
     else:
