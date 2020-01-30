@@ -153,18 +153,21 @@ def do_put(ses, url, json, params=None):
 
 def verify_node(node):
     node_string = dump_json(node)
+    variables = None
+    secrets = None
+    if upload_variables:
+        variables_in_conf = regex_findall(r'\$ENV\((\S*?)\)', node_string)  # Find env vars
+        variables: dict = load_json(open(git_cloned_dir + sync_root + 'node/' + var_file_path).read())
+        for var in variables_in_conf:  # Verify they exist in git repo
+            if var not in variables:
+                logging.error(f'Missing env var {var} in variables file {var_file_path}')
+    if upload_secrets:
+        secrets_in_conf = regex_findall(r'\$SECRET\((\S*?)\)', node_string)  # Find secrets
+        vault = Vaulter(vault_url, vault_git_token, vault_mounting_point)  # Create keyvault object
+        secrets: dict = vault.get_secrets(secrets_in_conf)  # Get the secrets from keyvault
+        if vault.verify() is False:  # Verify all secrets exist.
+            logging.error(f'These secrets do not exist in the vault {vault.get_missing_secrets()}')
 
-    variables_in_conf = regex_findall(r'\$ENV\((\S*?)\)', node_string)  # Find env vars
-    variables: dict = load_json(open(git_cloned_dir + sync_root + 'node/' + var_file_path).read())
-    for var in variables_in_conf:  # Verify they exist in git repo
-        if var not in variables:
-            logging.error(f'Missing env var {var} in variables file {var_file_path}')
-
-    secrets_in_conf = regex_findall(r'\$SECRET\((\S*?)\)', node_string)  # Find secrets
-    vault = Vaulter(vault_url, vault_git_token, vault_mounting_point)  # Create keyvault object
-    secrets: dict = vault.get_secrets(secrets_in_conf)  # Get the secrets from keyvault
-    if vault.verify() is False:  # Verify all secrets exist.
-        logging.error(f'These secrets do not exist in the vault {vault.get_missing_secrets()}')
     return variables, secrets
 
 
@@ -297,16 +300,19 @@ if __name__ == '__main__':
         # Verify variables & secrets if specified
         if upload_variables or upload_secrets:
             variables, secrets = verify_node(new_node)
-            logging.debug(f'Uploading secrets to node!')
             # Upload variables & secrets
             session = requests.session()
             session.headers = {'Authorization': f'bearer {jwt}'}
-            if upload_secrets:
+            if upload_secrets and secrets is not None:
                 if do_put(session, f'{sesam_api}/secrets', json=secrets) != 0:
                     logging.error('Failed to upload secrets to node!')
-            if upload_variables:
+            elif upload_secrets and secrets is None:
+                logging.error('Upload secrets is true but could not get secrets to upload!')
+            if upload_variables and variables is not None:
                 if do_put(session, f'{sesam_api}/env', json=variables) != 0:
                     logging.error('Failed to upload variables to node!')
+            elif upload_variables and variables is None:
+                logging.error('Upload variables is true but could not get variables to upload!')
         logging.info(f"Uploading new configuration from github to node {sesam_api}")
         zip_payload()
         upload_payload()

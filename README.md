@@ -150,7 +150,7 @@ in the case of needing to rollback? Enough with excuses, this could be implement
 * If GIT_USERNAME is set, the following will happen:
     * SSH git URL will automatically be converted to HTTP
     * DEPLOY_TOKEN will be used as a GIT ACCESS TOKEN.
-* Variables in the config are verified to exist in the variables file. Will complain if not.
+* Variables in the config can optionally be verified to exist in the variables file. Will complain if not.
 * Secrets used in the config are verified to exist in Key Vault
     * Key vault must be version 2 (kv2)
     * Key vault must support login with git token
