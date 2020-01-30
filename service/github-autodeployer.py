@@ -1,30 +1,31 @@
 #!/usr/bin/env python3
 
+import datetime
+import fnmatch
+import glob
+import logging
 import os
-import requests
+import os.path
 import shutil
 import zipfile
-import glob
-import os.path
-from git import Repo
-import fnmatch
-import logging
-import datetime
 from json import loads as load_json, dumps as dump_json
 from re import findall as regex_findall
-from Vaulter import Vaulter
 
+import requests
+from Vaulter import Vaulter
+from git import Repo
 from git.remote import to_progress_instance
+
 __author__ = "Enrico Razzetti"
 
 sesam_api = os.environ.get('SESAM_API_URL', 'http://sesam-node:9042/api')  # ex: "https://abcd1234.sesam.cloud/api"
 jwt = os.environ.get('JWT')
-git_repo = os.environ.get('GIT_REPO') # the project you want to sync from
-branch = os.environ.get('BRANCH', 'master') # the branch of the project you want to use for a sync
+git_repo = os.environ.get('GIT_REPO')  # the project you want to sync from
+branch = os.environ.get('BRANCH', 'master')  # the branch of the project you want to use for a sync
 tag = os.environ.get('TAG')
-sync_root = os.environ.get('SYNC_ROOT', '/') # the top directory from the github repo you want to use for sync
-deploy_token =  os.environ.get('DEPLOY_TOKEN') # ssh deploy key for this particular project
-autodeployer_config_path = os.environ.get('AUTODEPLOYER_PATH') # path to system config in current node config
+sync_root = os.environ.get('SYNC_ROOT', '/')  # the top directory from the github repo you want to use for sync
+deploy_token = os.environ.get('DEPLOY_TOKEN')  # ssh deploy key for this particular project
+autodeployer_config_path = os.environ.get('AUTODEPLOYER_PATH')  # path to system config in current node config
 var_file_path: str = os.environ.get('VARIABLES_FILE_PATH')
 vault_git_token = os.environ.get('VAULT_GIT_TOKEN')
 vault_mounting_point = os.environ.get('VAULT_MOUNTING_POINT')
@@ -49,6 +50,7 @@ logging.debug("Github repo: %s" % git_repo)
 
 if turn_off is True:
     import sys
+
     sys.exit(-1)
 
 if tag:
@@ -64,7 +66,7 @@ if tag:
 upload_variables = var_file_path is not None
 upload_secrets = vault_git_token is not None and vault_mounting_point is not None and vault_url is not None
 
-clone_with_git_token = False # Cloning with git token instead of deploy token if username is set.
+clone_with_git_token = False  # Cloning with git token instead of deploy token if username is set.
 if git_username is not None:
     clone_with_git_token = True
     logging.info('Cloning with username and access token!')
@@ -73,12 +75,14 @@ if git_username is not None:
 else:
     logging.info('Cloning with deploy token!')
 
+
 ## remove a directory if it exists
 def remove_if_exists(path):
     if os.path.exists(path):
         for root, dirs, files in os.walk(path):
             # os.remove(path)
             shutil.rmtree(path)
+
 
 ## clone a github repo version2: using python libraries
 def clone_git_repov2():
@@ -90,8 +94,8 @@ def clone_git_repov2():
     if tag:
         branch_or_tag = tag
     if clone_with_git_token is False:
-        Repo.clone_from(git_repo, git_cloned_dir, env=dict(GIT_SSH_COMMAND=ssh_cmd),branch=branch_or_tag)
-    else: # If you are using personal access token instead of deploy token, you also need username.
+        Repo.clone_from(git_repo, git_cloned_dir, env=dict(GIT_SSH_COMMAND=ssh_cmd), branch=branch_or_tag)
+    else:  # If you are using personal access token instead of deploy token, you also need username.
         git_url = None
         if git_repo.startswith('https://'):
             git_url = git_repo.replace('https://', '')
@@ -103,6 +107,7 @@ def clone_git_repov2():
             git_url = git_repo
         url = f'https://{git_username}:{deploy_token}@{git_url}'
         Repo.clone_from(url, git_cloned_dir, progress=to_progress_instance(None), branch=branch_or_tag)
+
 
 ## remove .git, .gitignore and README from a cloned github repo directory
 def clean_git_repo():
@@ -239,7 +244,7 @@ def download_sesam_zip():
 def upload_payload():
     request = requests.put(url=sesam_api + "/config?force=true",
                            data=open(zipped_payload, 'rb').read(),
-                           headers={'Content-Type': 'application/zip', 'Authorization': 'bearer ' + jwt},verify=False)
+                           headers={'Content-Type': 'application/zip', 'Authorization': 'bearer ' + jwt}, verify=False)
     if request.status_code == 200:
         logging.info("OK. The Sesam api answered with status code: %s" % request.status_code)
     else:
@@ -273,8 +278,10 @@ def check_for_unknown():
         logging.warning("WARNING:")
         logging.warning("Looks like Sesam has flagged some of your github committed data as gibberish:")
         logging.warning("I detected a directory called 'unknown' in the dowloaded configuration from the node.")
-        logging.warning("This could be, for example, some data file added to the pipes directory. But i don't know for sure.")
-        logging.warning("This error is in your github committed code and should be corrected before continuing with your workflow,")
+        logging.warning(
+            "This could be, for example, some data file added to the pipes directory. But i don't know for sure.")
+        logging.warning(
+            "This error is in your github committed code and should be corrected before continuing with your workflow,")
         logging.warning("else, prepare for unexpected behaviour. Hic Sunt Leones. You have been warned.")
         logging.warning("\n")
 
