@@ -20,5 +20,4 @@ COPY ./service /service
 
 WORKDIR /service
 
-RUN echo '*  *  *  *  *    /service/github-autodeployer.py' > /etc/crontabs/root
-CMD crond -l 2 -f
+CMD ["python3","-u","github-autodeployer.py"]
