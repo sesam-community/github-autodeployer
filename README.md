@@ -159,34 +159,3 @@ in the case of needing to rollback? Enough with excuses, this could be implement
         * Git token used for kv2 must have permissions: read:org & write:org
 * Comparison now happens by loading the JSON inside of the files instead of straight directory comparison.
 * Added 'off' option for simplicity's sake.
-
-## Example Sesam System config using version 2.1.0
-```
-{
-  "_id": "extra-node-watcher",
-  "type": "system:microservice",
-    "docker": {
-    "environment": {
-      "AUTODEPLOYER_PATH": "systems/extra-node-watcher.conf.json",
-      "BRANCH": "master",                       <--- CAN ALSO BE A TAG
-      "DEPLOY_TOKEN": "$SECRET(GIT_TOKEN)",     <--- DEPLOY_TOKEN if GIT_USERNAME is NOT set. ACCESS_TOKEN if it is.
-      "GIT_REPO": "$ENV(EXTRA_NODE_GIT_REPO)",
-      "GIT_USERNAME": "<YOUR_GITHUB_USERNAME>", <--- IF THIS IS SET 'DEPLOY_TOKEN' MUST BE A GIT ACCESS_TOKEN!
-      "JWT": "$SECRET(EXTRA_NODE_JWT)",
-      "LOG_LEVEL": "DEBUG",
-      "SYNC_ROOT": "/",
-      "VARIABLES_FILE_PATH": "variables/variables-<ENV>.json",  OPTIONAL
-      "VAULT_GIT_TOKEN": "$SECRET(GIT_TOKEN)",                  OPTIONAL
-      "VAULT_MOUNTING_POINT": "sesam/kv2",                      OPTIONAL
-      "VAULT_URL": "https://vault.<ORGANIZATION>.io",           OPTIONAL
-      "off": "false"                                            OPTIONAL, default false.
-      "ORCHESTRATOR": true                                      OPTIONAL, default false
-    },
-    "image": "sesamcommunity/github-autodeployer:2.1.0",
-    "port": 5000
-  }
-}
-```
-### Notes on version 2.1.0:
-* It is backwards compatable with previous versions as the new functionality needs the new environment variables to run.
-* If ORCHESTRATOR is set to true the microservice will overwrite all registered changes ue to the orchestrator and copy the old config.
