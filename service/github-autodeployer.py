@@ -37,7 +37,6 @@ git_username = os.environ.get('GIT_USERNAME', None)  # Needed if using clone_git
 turn_off = os.environ.get('off', 'false').lower() == 'true'
 sleep_interval = os.environ.get("SLEEP_INTERVAL", 60)
 
-
 ## internal, skeleton, don't touch, you perv! *touchy, touchy*
 git_cloned_dir = "/tmp/git_upstream_clone"
 sesam_checkout_dir = "/tmp/sesam_conf"
@@ -290,7 +289,7 @@ def check_for_unknown():
 
 
 if __name__ == '__main__':
-    while 1 < 2:    
+    while 1 < 2:
         os.chdir("/service")
         if clone_with_git_token is False:
             with open("id_deployment_key", "w") as key_file:
@@ -307,7 +306,7 @@ if __name__ == '__main__':
         check_for_unknown()
         copy_autodeployer()
 
-        new_node = load_sesam_files_as_json(git_cloned_dir + "/" + sync_root + '/node')
+        new_node = load_sesam_files_as_json(git_cloned_dir + "/" + sync_root)
         old_node = load_sesam_files_as_json(sesam_checkout_dir + "/" + "unpacked")
         if not compare_json_dict_list(old_node, new_node):
             # Verify variables & secrets if specified
@@ -326,11 +325,15 @@ if __name__ == '__main__':
                         logging.error('Failed to upload variables to node!')
                 elif upload_variables and variables is None:
                     logging.error('Upload variables is true but could not get variables to upload!')
+            if orchestrator:
+                check_and_replace_orchestrator_pipes()
+                check_and_replace_orchestrator_systems()
+        
             logging.info(f"Uploading new configuration from github to node {sesam_api}")
             zip_payload()
             upload_payload()
         else:
             logging.info("No change, doing nothing.")
-
+            
         logging.info("Sleeping for {} seconds".format(sleep_interval))
         time.sleep(sleep_interval)
