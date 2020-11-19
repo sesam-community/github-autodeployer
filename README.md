@@ -33,6 +33,8 @@ Warning, use with care. Notes:
 
 `SYNC_ROOT` - Defaults to the top directory, or "/". The path of the top directory in your GitHub repo to use for sync. Might be a subdirectory of the repo, for example if you have multiple configurations in different directories of the same repository.
 
+`SLEEP_INTERVAL` - Defaults to 60. The amount of time (in seconds) between synching with the git repository. Value should be an integer.
+
 ## Example Sesam System Config
 This configuration assumes that you have defined both a "github_token" and a "jwt" secret under settings > datahub > secrets, containing the relative correct strings. Make sure also that the GitHub token you are using belongs to a user
 with access permission to the private GitHub repository you are using. Some variables have been omitted, and using defaults: we assume we are using the master branch, and "pipes", "systems" and node-metadata.conf.json are in the top directory of that repository.
@@ -139,6 +141,7 @@ in the case of needing to rollback? Enough with excuses, this could be implement
       "VAULT_MOUNTING_POINT": "sesam/kv2",                      OPTIONAL
       "VAULT_URL": "https://vault.<ORGANIZATION>.io",           OPTIONAL
       "off": "false"                                            OPTIONAL, default false.
+      "SLEEP_INTERVAL": 60                                      OPTIONAL, default 60
     },
     "image": "sesamcommunity/github-autodeployer:2.0.0",
     "port": 5000

@@ -10,6 +10,7 @@ import shutil
 import zipfile
 from json import loads as load_json, dumps as dump_json
 from re import findall as regex_findall
+from time import sleep
 
 import requests
 from Vaulter import Vaulter
@@ -48,6 +49,12 @@ logging.basicConfig(level=log_level)  # dump log to stdout
 
 logging.info(datetime.datetime.now())
 logging.debug("Github repo: %s" % git_repo)
+
+try:
+    sleep_interval = int(os.environ.get("SLEEP_INTERVAL", 60))
+except (ValueError, TypeError):
+    logging.warning('SLEEP_INTERVAL not set to valid int or string containing int! Setting to default = 60.')
+    sleep_interval = 60
 
 if turn_off is True:
     import sys
@@ -194,10 +201,15 @@ def load_sesam_files_as_json(dir):
     return node_config
 
 
-def compare_json_dict_list(list1, list2):
-    sorted1 = sorted(list1, key=lambda i: i['_id'])
+def compare_json_dict_list(old, new):
 
-    sorted2 = sorted(list2, key=lambda i: i['_id'])
+    #Filter to remove autodeployer changes from comparison
+    filtered1 = list(filter(lambda x: x['_id'] != autodeployer_config_path.split('/')[-1].split('.conf.json')[0], old))
+    sorted1 = sorted(filtered1, key=lambda i: i['_id'])
+
+    filtered2 = list(filter(lambda x: x['_id'] != autodeployer_config_path.split('/')[-1].split('.conf.json')[0], new))
+    sorted2 = sorted(filtered2, key=lambda i: i['_id'])
+
     return sorted1 == sorted2
 
 
@@ -249,7 +261,7 @@ def upload_payload():
     if request.status_code == 200:
         logging.info("OK. The Sesam api answered with status code: %s" % request.status_code)
     else:
-        logging.error("Non 200 status code from the Sesam api, got: %s" % request.status_code)
+        logging.error(f"Non 200 status code from the Sesam api, got: '{request.status_code}'. Content: '{request.content}'")
 
 
 ## unzip the downloaded sesam zip archive
@@ -318,46 +330,48 @@ def check_and_replace_orchestrator_systems():
                 None
 
 if __name__ == '__main__':
-    os.chdir("/service")
-    if clone_with_git_token is False:
-        with open("id_deployment_key", "w") as key_file:
-            key_file.write(os.environ['DEPLOY_TOKEN'])
-        os.chmod("id_deployment_key", 0o600)
+    while True:
+        os.chdir("/service")
+        if clone_with_git_token is False:
+            with open("id_deployment_key", "w") as key_file:
+                key_file.write(os.environ['DEPLOY_TOKEN'])
+            os.chmod("id_deployment_key", 0o600)
 
-    ## we first clone the repo, clean it up, and extract the relevant files to prepare the payload.
-    clone_git_repov2()
-    clean_git_repo()
-    prepare_payload()
-    ## we then download the sesam configuration from the api, unpack it, check it ...
-    download_sesam_zip()
-    unpack_sesam_zip()
-    check_for_unknown()
-    copy_autodeployer()
+        ## we first clone the repo, clean it up, and extract the relevant files to prepare the payload.
+        clone_git_repov2()
+        clean_git_repo()
+        prepare_payload()
+        ## we then download the sesam configuration from the api, unpack it, check it ...
+        download_sesam_zip()
+        unpack_sesam_zip()
+        check_for_unknown()
+        copy_autodeployer()
 
-    new_node = load_sesam_files_as_json(git_cloned_dir + "/" + sync_root)
-    old_node = load_sesam_files_as_json(sesam_checkout_dir + "/" + "unpacked")
-    if not compare_json_dict_list(old_node, new_node):
-        # Verify variables & secrets if specified
-        if upload_variables or upload_secrets:
-            variables, secrets = verify_node(new_node)
-            # Upload variables & secrets
-            session = requests.session()
-            session.headers = {'Authorization': f'bearer {jwt}'}
-            if upload_secrets and secrets is not None:
-                if do_put(session, f'{sesam_api}/secrets', json=secrets) != 0:
-                    logging.error('Failed to upload secrets to node!')
-            elif upload_secrets and secrets is None:
-                logging.error('Upload secrets is true but could not get secrets to upload!')
-            if upload_variables and variables is not None:
-                if do_put(session, f'{sesam_api}/env', json=variables) != 0:
-                    logging.error('Failed to upload variables to node!')
-            elif upload_variables and variables is None:
-                logging.error('Upload variables is true but could not get variables to upload!')
-        if orchestrator:
-            check_and_replace_orchestrator_pipes()
-            check_and_replace_orchestrator_systems()
-        logging.info(f"Uploading new configuration from github to node {sesam_api}")
-        zip_payload()
-        upload_payload()
-    else:
-        logging.info("No change, doing nothing.")
+        new_node = load_sesam_files_as_json(git_cloned_dir + "/" + sync_root)
+        old_node = load_sesam_files_as_json(sesam_checkout_dir + "/" + "unpacked")
+        if not compare_json_dict_list(old_node, new_node):
+            # Verify variables & secrets if specified
+            if upload_variables or upload_secrets:
+                variables, secrets = verify_node(new_node)
+                # Upload variables & secrets
+                session = requests.session()
+                session.headers = {'Authorization': f'bearer {jwt}'}
+                if upload_secrets and secrets is not None:
+                    if do_put(session, f'{sesam_api}/secrets', json=secrets) != 0:
+                        logging.error('Failed to upload secrets to node!')
+                elif upload_secrets and secrets is None:
+                    logging.error('Upload secrets is true but could not get secrets to upload!')
+                if upload_variables and variables is not None:
+                    if do_put(session, f'{sesam_api}/env', json=variables) != 0:
+                        logging.error('Failed to upload variables to node!')
+                elif upload_variables and variables is None:
+                    logging.error('Upload variables is true but could not get variables to upload!')
+            if orchestrator:
+                check_and_replace_orchestrator_pipes()
+                check_and_replace_orchestrator_systems()
+            logging.info(f"Uploading new configuration from github to node {sesam_api}")
+            zip_payload()
+            upload_payload()
+        else:
+            logging.info("No change, doing nothing.")
+        sleep(sleep_interval)
