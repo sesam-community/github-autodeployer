@@ -374,4 +374,5 @@ if __name__ == '__main__':
             upload_payload()
         else:
             logging.info("No change, doing nothing.")
+        logging.info(f"Going to sleep for {sleep_interval} seconds!")
         sleep(sleep_interval)
