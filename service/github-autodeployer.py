@@ -8,9 +8,9 @@ import os
 import os.path
 import shutil
 import zipfile
-import time
 from json import loads as load_json, dumps as dump_json
 from re import findall as regex_findall
+from time import sleep
 
 import requests
 from Vaulter import Vaulter
@@ -31,11 +31,11 @@ var_file_path: str = os.environ.get('VARIABLES_FILE_PATH')
 vault_git_token = os.environ.get('VAULT_GIT_TOKEN')
 vault_mounting_point = os.environ.get('VAULT_MOUNTING_POINT')
 vault_url = os.environ.get('VAULT_URL')
+orchestrator = os.environ.get('ORCHESTRATOR', False)
 
 git_username = os.environ.get('GIT_USERNAME', None)  # Needed if using clone_git_repov3
 
 turn_off = os.environ.get('off', 'false').lower() == 'true'
-sleep_interval = os.environ.get("SLEEP_INTERVAL", 60)
 
 ## internal, skeleton, don't touch, you perv! *touchy, touchy*
 git_cloned_dir = "/tmp/git_upstream_clone"
@@ -49,6 +49,12 @@ logging.basicConfig(level=log_level)  # dump log to stdout
 
 logging.info(datetime.datetime.now())
 logging.debug("Github repo: %s" % git_repo)
+
+try:
+    sleep_interval = int(os.environ.get("SLEEP_INTERVAL", 60))
+except (ValueError, TypeError):
+    logging.warning('SLEEP_INTERVAL not set to valid int or string containing int! Setting to default = 60.')
+    sleep_interval = 60
 
 if turn_off is True:
     import sys
@@ -195,10 +201,15 @@ def load_sesam_files_as_json(dir):
     return node_config
 
 
-def compare_json_dict_list(list1, list2):
-    sorted1 = sorted(list1, key=lambda i: i['_id'])
+def compare_json_dict_list(old, new):
 
-    sorted2 = sorted(list2, key=lambda i: i['_id'])
+    #Filter to remove autodeployer changes from comparison
+    filtered1 = list(filter(lambda x: x['_id'] != autodeployer_config_path.split('/')[-1].split('.conf.json')[0], old))
+    sorted1 = sorted(filtered1, key=lambda i: i['_id'])
+
+    filtered2 = list(filter(lambda x: x['_id'] != autodeployer_config_path.split('/')[-1].split('.conf.json')[0], new))
+    sorted2 = sorted(filtered2, key=lambda i: i['_id'])
+
     return sorted1 == sorted2
 
 
@@ -250,7 +261,7 @@ def upload_payload():
     if request.status_code == 200:
         logging.info("OK. The Sesam api answered with status code: %s" % request.status_code)
     else:
-        logging.error("Non 200 status code from the Sesam api, got: %s" % request.status_code)
+        logging.error(f"Non 200 status code from the Sesam api, got: '{request.status_code}'. Content: '{request.content}'")
 
 
 ## unzip the downloaded sesam zip archive
@@ -287,9 +298,39 @@ def check_for_unknown():
         logging.warning("else, prepare for unexpected behaviour. Hic Sunt Leones. You have been warned.")
         logging.warning("\n")
 
+def check_and_replace_orchestrator_pipes():
+    for old_filename in os.listdir(sesam_checkout_dir + "/unpacked/pipes/"):
+        with open(os.path.join(sesam_checkout_dir + "/unpacked/pipes/", old_filename), 'r') as f: # open in readonly mode
+            old_file = load_json(f.read())
+            try:
+                old_file["metadata"]["orchestrator"]["original_configuration"]
+                for new_filename in os.listdir(git_cloned_dir + "/sesam-node/pipes/"):
+                    with open(os.path.join(git_cloned_dir + "/sesam-node/pipes/", new_filename), 'r') as g: # open in readonly mode
+                        new_file = load_json(g.read())
+                        if old_file["metadata"]["orchestrator"]["original_configuration"] == new_file:
+                            logging.info("The pipe %s is restored to orchestrator mode" % new_file["_id"])
+                            with open(os.path.join(payload_dir + "/pipes/", new_filename), 'w') as h:
+                                h.write(dump_json(old_file))
+            except KeyError:
+                None
+def check_and_replace_orchestrator_systems():
+    for old_filename in os.listdir(sesam_checkout_dir + "/unpacked/systems/"):
+        with open(os.path.join(sesam_checkout_dir + "/unpacked/systems/", old_filename), 'r') as f: # open in readonly mode
+            old_file = load_json(f.read())
+            try:
+                old_file["metadata"]["orchestrator"]["original_configuration"]
+                for new_filename in os.listdir(git_cloned_dir + "/sesam-node/systems/"):
+                    with open(os.path.join(git_cloned_dir + "/sesam-node/systems/", new_filename), 'r') as g: # open in readonly mode
+                        new_file = load_json(g.read())
+                        if old_file["metadata"]["orchestrator"]["original_configuration"] == new_file:
+                            logging.info("The system %s is restored to orchestrator mode" % new_file["_id"])
+                            with open(os.path.join(payload_dir + "/systems/", new_filename), 'w') as h:
+                                h.write(dump_json(old_file))
+            except KeyError:
+                None
 
 if __name__ == '__main__':
-    while 1 < 2:
+    while True:
         os.chdir("/service")
         if clone_with_git_token is False:
             with open("id_deployment_key", "w") as key_file:
@@ -328,12 +369,10 @@ if __name__ == '__main__':
             if orchestrator:
                 check_and_replace_orchestrator_pipes()
                 check_and_replace_orchestrator_systems()
-        
             logging.info(f"Uploading new configuration from github to node {sesam_api}")
             zip_payload()
             upload_payload()
         else:
             logging.info("No change, doing nothing.")
-            
-        logging.info("Sleeping for {} seconds".format(sleep_interval))
-        time.sleep(sleep_interval)
+        logging.info(f"Going to sleep for {sleep_interval} seconds!")
+        sleep(sleep_interval)
