@@ -13,7 +13,7 @@ from re import findall as regex_findall
 from time import sleep
 
 import requests
-from Vaulter import Vaulter
+from .Vaulter import Vaulter
 from git import Repo
 from git.remote import to_progress_instance
 
@@ -31,6 +31,7 @@ var_file_path: str = os.environ.get('VARIABLES_FILE_PATH')
 vault_git_token = os.environ.get('VAULT_GIT_TOKEN')
 vault_mounting_point = os.environ.get('VAULT_MOUNTING_POINT')
 vault_url = os.environ.get('VAULT_URL')
+vault_path_prefix = os.environ.get('VAULT_PATH_PREFIX', "")
 orchestrator = os.environ.get('ORCHESTRATOR', False)
 
 git_username = os.environ.get('GIT_USERNAME', None)  # Needed if using clone_git_repov3
@@ -178,7 +179,8 @@ def verify_node(node):
                 logging.error(f'Missing env var {var} in variables file {var_file_path}')
     if upload_secrets:
         secrets_in_conf = regex_findall(r'\$SECRET\((\S*?)\)', node_string)  # Find secrets
-        vault = Vaulter(vault_url, vault_git_token, vault_mounting_point)  # Create keyvault object
+        vault = Vaulter(vault_url, vault_git_token, vault_mounting_point,
+                        vault_path_prefix=vault_path_prefix)  # Create keyvault object
         secrets: dict = vault.get_secrets(secrets_in_conf)  # Get the secrets from keyvault
         if vault.verify() is False:  # Verify all secrets exist.
             logging.error(f'These secrets do not exist in the vault {vault.get_missing_secrets()}')
