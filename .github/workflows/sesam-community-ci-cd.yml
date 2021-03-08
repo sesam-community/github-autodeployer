@@ -25,5 +25,5 @@ jobs:
           GITHUB_RUN_NUMBER: ${{ github.run_number }}
           DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
           # DOCKER_REPO_NAME: uncomment_and_set_to_docker_repo_name
-        run: bash <(curl -s https://raw.githubusercontent.com/sesam-community/guidelines/testing-secrets.prefix/git_action.sh)
+        run: bash <(curl -s https://raw.githubusercontent.com/sesam-community/guidelines/master/git_action.sh)
         shell: bash
