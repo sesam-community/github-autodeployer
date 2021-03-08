@@ -135,8 +135,8 @@ in the case of needing to rollback? Enough with excuses, this could be implement
       "GIT_USERNAME": "<YOUR_GITHUB_USERNAME>", <--- IF THIS IS SET 'DEPLOY_TOKEN' MUST BE A GIT ACCESS_TOKEN!
       "JWT": "$SECRET(EXTRA_NODE_JWT)",
       "LOG_LEVEL": "DEBUG",
-      "SYNC_ROOT": "/",
-      "VARIABLES_FILE_PATH": "variables/variables-<ENV>.json",  OPTIONAL
+      "SYNC_ROOT": "node",
+      "VARIABLES_FILE_PATH": "/node/variables/variables-<ENV>.json",  OPTIONAL
       "VAULT_GIT_TOKEN": "$SECRET(GIT_TOKEN)",                  OPTIONAL
       "VAULT_MOUNTING_POINT": "sesam/kv2",                      OPTIONAL
       "VAULT_URL": "https://vault.<ORGANIZATION>.io",           OPTIONAL
