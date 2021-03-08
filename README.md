@@ -180,6 +180,7 @@ in the case of needing to rollback? Enough with excuses, this could be implement
       "VAULT_GIT_TOKEN": "$SECRET(GIT_TOKEN)",                  OPTIONAL
       "VAULT_MOUNTING_POINT": "sesam/kv2",                      OPTIONAL
       "VAULT_URL": "https://vault.<ORGANIZATION>.io",           OPTIONAL
+      "VAULT_PATH_PREFIX": "",                                  OPTIONAL, default ""
       "off": "false"                                            OPTIONAL, default false.
       "ORCHESTRATOR": true                                      OPTIONAL, default false
     },
