@@ -33,6 +33,7 @@ vault_mounting_point = os.environ.get('VAULT_MOUNTING_POINT')
 vault_url = os.environ.get('VAULT_URL')
 vault_path_prefix = os.environ.get('VAULT_PATH_PREFIX', "")
 orchestrator = os.environ.get('ORCHESTRATOR', False)
+verify_ssl = os.environ.get('VERIFY_SSL', True)
 
 git_username = os.environ.get('GIT_USERNAME', None)  # Needed if using clone_git_repov3
 
@@ -357,6 +358,7 @@ if __name__ == '__main__':
                 variables, secrets = verify_node(new_node)
                 # Upload variables & secrets
                 session = requests.session()
+                session.verify = verify_ssl
                 session.headers = {'Authorization': f'bearer {jwt}'}
                 if upload_secrets and secrets is not None:
                     if do_put(session, f'{sesam_api}/secrets', json=secrets) != 0:
