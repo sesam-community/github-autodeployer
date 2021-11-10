@@ -35,6 +35,8 @@ Warning, use with care. Notes:
 
 `SLEEP_INTERVAL` - Defaults to 60. The amount of time (in seconds) between synching with the git repository. Value should be an integer.
 
+`VERIFY_SSL` - Defaults to False. Determines if the http requests should verify SSL certificates. 
+
 ## Example Sesam System Config
 This configuration assumes that you have defined both a "github_token" and a "jwt" secret under settings > datahub > secrets, containing the relative correct strings. Make sure also that the GitHub token you are using belongs to a user
 with access permission to the private GitHub repository you are using. Some variables have been omitted, and using defaults: we assume we are using the master branch, and "pipes", "systems" and node-metadata.conf.json are in the top directory of that repository.

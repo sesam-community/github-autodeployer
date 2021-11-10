@@ -33,6 +33,7 @@ vault_mounting_point = os.environ.get('VAULT_MOUNTING_POINT')
 vault_url = os.environ.get('VAULT_URL')
 vault_path_prefix = os.environ.get('VAULT_PATH_PREFIX', "")
 orchestrator = os.environ.get('ORCHESTRATOR', False)
+verify_ssl = os.environ.get('VERIFY_SSL', False)
 
 git_username = os.environ.get('GIT_USERNAME', None)  # Needed if using clone_git_repov3
 
@@ -245,7 +246,7 @@ def download_sesam_zip():
     remove_if_exists(sesam_checkout_dir)
     create_dir(sesam_checkout_dir)
     request = requests.get(url=sesam_api + "/config",
-                           headers={'Accept': 'application/zip', 'Authorization': 'bearer ' + jwt}, verify=False)
+                           headers={'Accept': 'application/zip', 'Authorization': 'bearer ' + jwt}, verify=verify_ssl)
     if request.status_code == 200:
         logging.info("OK, the Sesam api answered with status code: %s" % request.status_code)
         with open(sesam_checkout_dir + "/" + "sesam.zip", 'wb') as f:
@@ -259,7 +260,8 @@ def download_sesam_zip():
 def upload_payload():
     request = requests.put(url=sesam_api + "/config?force=true",
                            data=open(zipped_payload, 'rb').read(),
-                           headers={'Content-Type': 'application/zip', 'Authorization': 'bearer ' + jwt}, verify=False)
+                           headers={'Content-Type': 'application/zip', 'Authorization': 'bearer ' + jwt},
+                           verify=verify_ssl)
     if request.status_code == 200:
         logging.info("OK. The Sesam api answered with status code: %s" % request.status_code)
     else:
@@ -357,6 +359,7 @@ if __name__ == '__main__':
                 variables, secrets = verify_node(new_node)
                 # Upload variables & secrets
                 session = requests.session()
+                session.verify = verify_ssl
                 session.headers = {'Authorization': f'bearer {jwt}'}
                 if upload_secrets and secrets is not None:
                     if do_put(session, f'{sesam_api}/secrets', json=secrets) != 0:
