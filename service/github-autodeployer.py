@@ -173,7 +173,7 @@ def verify_node(node):
     secrets = None
     if upload_variables:
         variables_in_conf = regex_findall(r'\$ENV\((\S*?)\)', node_string)  # Find env vars
-        variables: dict = load_json(open(git_cloned_dir + var_file_path).read())
+        variables: dict = load_json(open(git_cloned_dir + var_file_path, encoding='utf-8-sig').read())
         for var in variables_in_conf:  # Verify they exist in git repo
             if var not in variables:
                 logging.error(f'Missing env var {var} in variables file {var_file_path}')
