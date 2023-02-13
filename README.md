@@ -17,7 +17,7 @@ Warning, use with care. Notes:
 
 ## Environment variables
 
-`SESAM_API_URL` - In the format "https://address/api". You don't need to add this variable, since per default the microservice uses the internal docker container address. That is the safest and recommended choice. In any case, you can specify the url of the api of the instance you want to control here (most probably, the address of the Sesam instance you are adding the microservice to). Make sure you don't end up controlling the "wrong" Sesam instance here, since the address will be probably resolved correctly and if there is no firewall blocking the traffic, the configuration of that Sesam node will be overwritten :-)
+`SESAM_API_URL` - In the format "https://address/api". Make sure you don't end up controlling the "wrong" Sesam instance here, since the address will be probably resolved correctly and if there is no firewall blocking the traffic, the configuration of that Sesam node will be overwritten :-)
 
 `JWT` - JSON Web Token granting access to the instance. This should be added as a secret to the datahub / variables section in your Settings.
 
@@ -48,6 +48,7 @@ with access permission to the private GitHub repository you are using. Some vari
       "GIT_REPO": "$ENV(git_repo)",
       "DEPLOY_TOKEN": "$SECRET(deploy-token)",
       "AUTODEPLOYER_PATH": "systems/github-autodeployer.conf.json",
+      "SESAM_API_URL": "https://datahub-xxxxxx.sesam.cloud/api",
       "JWT": "$SECRET(jwt)"
     },
     "image": "sesamcommunity/github-autodeployer:latest",
