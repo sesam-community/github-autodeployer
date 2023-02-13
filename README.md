@@ -48,6 +48,7 @@ with access permission to the private GitHub repository you are using. Some vari
       "GIT_REPO": "$ENV(git_repo)",
       "DEPLOY_TOKEN": "$SECRET(deploy-token)",
       "AUTODEPLOYER_PATH": "systems/github-autodeployer.conf.json",
+      "SESAM_API_URL": "https://datahub-xxxxxx.sesam.cloud/api",
       "JWT": "$SECRET(jwt)"
     },
     "image": "sesamcommunity/github-autodeployer:latest",
