@@ -1,4 +1,4 @@
-requests==2.25.1
+requests==2.31.0
 PyGithub==1.35
 GitPython==3.0.6
 hvac==0.9.6
